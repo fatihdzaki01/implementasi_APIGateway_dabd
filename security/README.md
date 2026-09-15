@@ -16,12 +16,16 @@
 ```
 security/
 ├── __init__.py           # Package initialization
+├── config.py             # Configuration management (NEW)
 ├── auth.py               # Core authentication & authorization logic
 ├── middleware.py         # Middleware untuk gateway (auth + rate limit)
 ├── rate_limiter.py       # Rate limiting implementation
 ├── dependencies.py       # FastAPI dependencies (get_current_user, etc.)
 ├── router.py             # Auth endpoints (/auth/*)
+├── init_roles.py         # Database role initialization script (NEW)
+├── create_test_users.py  # Test user creation script (NEW)
 ├── requirements.txt      # Python dependencies
+├── .env.example          # Environment variables template (NEW)
 └── README.md             # Dokumentasi ini
 ```
 
@@ -87,42 +91,66 @@ Modul ini menggunakan models dari `shared/models.py`:
 
 ## 🚀 Cara Pakai
 
-### 1. Setup Database
+### 1. Setup Environment Variables
+
+Copy `.env.example` ke `.env` dan update values:
+
+```bash
+cp security/.env.example security/.env
+# Edit security/.env dengan text editor
+```
+
+**PENTING:** Ganti `JWT_SECRET_KEY` di production!
+
+```bash
+# Generate secure JWT secret key:
+openssl rand -hex 32
+```
+
+### 2. Setup Database
 
 Pastikan database sudah di-initialize dengan migration script dari `shared/migrations/`.
 
-### 2. Create Default Roles
+### 3. Create Default Roles
 
-```python
-from shared.db import SessionLocal
-from shared.models import Role
-
-db = SessionLocal()
-
-# Admin role
-admin_role = Role(
-    name="admin",
-    permissions={
-        "* *": True  # All methods, all paths
-    }
-)
-
-# User role
-user_role = Role(
-    name="user",
-    permissions={
-        "GET /service-a/*": True,
-        "GET /service-b/*": True,
-        "GET /service-c/*": True,
-        "POST /service-a/items": True
-    }
-)
-
-db.add_all([admin_role, user_role])
-db.commit()
+```bash
+# Run dari root directory
+python -m security.init_roles
 ```
 
-### 3. Register User
+Output:
+```
+✓ Created role 'admin'
+✓ Created role 'user'
+✓ Created role 'readonly'
+✓ Created role 'service'
+
+Role initialization complete!
+```
+
+### 4. Create Test Users (Optional - Development Only)
+
+```bash
+python -m security.create_test_users
+```
+
+⚠️ **WARNING:** Jangan run di production! Test users memiliki password weak.
+
+### 5. Register User (via API)
+
+### 5. Register User (via API)
+
+```bash
+curl -X POST http://localhost:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "password": "securepass123",
+    "role_name": "user"
+  }'
+```
+
+### 6. Login
 
 ```bash
 curl -X POST http://localhost:8000/auth/register \
@@ -347,6 +375,53 @@ from security.dependencies import require_admin
 async def delete_user(user_id: int, admin: User = Depends(require_admin)):
     # Only admin
     pass
+```
+
+---
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+Configuration dikelola via environment variables. See `.env.example` untuk template.
+
+**Required:**
+- `JWT_SECRET_KEY` - Secret key untuk JWT signing (WAJIB ganti di production!)
+
+**Optional (dengan defaults):**
+- `JWT_ALGORITHM` - Algorithm (default: HS256)
+- `JWT_EXPIRATION_MINUTES` - Token expiry (default: 30)
+- `RATE_LIMIT_MAX_REQUESTS` - Max requests (default: 100)
+- `RATE_LIMIT_WINDOW_SECONDS` - Window (default: 60)
+
+**Redis (Optional - untuk production):**
+- `REDIS_HOST` - Redis hostname (default: localhost)
+- `REDIS_PORT` - Redis port (default: 6379)
+- `REDIS_DB` - Redis DB (default: 0)
+- `USE_REDIS_RATE_LIMITER` - Enable Redis rate limiter (default: false)
+
+### Loading Configuration
+
+Configuration di-load otomatis dari environment variables saat module di-import:
+
+```python
+from security.config import config
+
+print(config.JWT_SECRET_KEY)  # Access config values
+print(config.RATE_LIMIT_MAX_REQUESTS)
+```
+
+### Docker Compose Integration
+
+Tambahkan environment variables di `docker-compose.yml`:
+
+```yaml
+services:
+  gateway:
+    environment:
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - RATE_LIMIT_MAX_REQUESTS=200
+      - USE_REDIS_RATE_LIMITER=true
 ```
 
 ---

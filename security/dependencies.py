@@ -12,8 +12,6 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 # Import dari shared
-import sys
-sys.path.append('..')
 from shared.db import get_db
 from shared.models import User
 

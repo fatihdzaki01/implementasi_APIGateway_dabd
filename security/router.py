@@ -13,8 +13,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 # Import dari shared (kontrak)
-import sys
-sys.path.append('..')
 from shared.db import get_db
 from shared.models import User, Role
 from shared.schemas import LoginRequest, LoginResponse
@@ -25,6 +23,7 @@ from security.auth import (
     create_user_api_key, hash_password
 )
 from security.dependencies import get_current_user
+from security.config import config
 
 # Pydantic models untuk request/response
 from pydantic import BaseModel, Field

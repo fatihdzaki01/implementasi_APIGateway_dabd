@@ -15,15 +15,11 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 # Import dari shared (kontrak yang sudah disepakati)
-import sys
-sys.path.append('..')
 from shared.models import User, Role, ApiKey
 from shared.schemas import TokenPayload
 
-# Configuration
-JWT_SECRET_KEY = "dev-secret-key-CHANGE-IN-PRODUCTION"  # TODO: move to env
-JWT_ALGORITHM = "HS256"
-JWT_EXPIRATION_MINUTES = 30
+# Import config
+from security.config import config
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -54,7 +50,7 @@ def create_access_token(user: User) -> tuple[str, int]:
     Returns:
         tuple: (token_string, expires_in_seconds)
     """
-    expires_delta = timedelta(minutes=JWT_EXPIRATION_MINUTES)
+    expires_delta = timedelta(minutes=config.JWT_EXPIRATION_MINUTES)
     expire = datetime.utcnow() + expires_delta
     
     # Payload sesuai shared.schemas.TokenPayload
@@ -66,7 +62,7 @@ def create_access_token(user: User) -> tuple[str, int]:
         "iat": int(datetime.utcnow().timestamp())
     }
     
-    token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+    token = jwt.encode(payload, config.JWT_SECRET_KEY, algorithm=config.JWT_ALGORITHM)
     expires_in = int(expires_delta.total_seconds())
     
     return token, expires_in
@@ -80,7 +76,7 @@ def decode_access_token(token: str) -> Optional[TokenPayload]:
         TokenPayload jika valid, None jika invalid/expired
     """
     try:
-        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(token, config.JWT_SECRET_KEY, algorithms=[config.JWT_ALGORITHM])
         
         # Validate payload structure
         if "user_id" not in payload or "username" not in payload or "role" not in payload:

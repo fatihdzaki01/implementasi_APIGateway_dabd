@@ -15,17 +15,19 @@ from typing import Callable
 import uuid
 
 # Import dari shared (kontrak)
-import sys
-sys.path.append('..')
 from shared.db import SessionLocal
 from shared.schemas import StandardResponse
 
 # Import dari security module
 from security.auth import decode_access_token, get_user_by_id, check_permission, verify_api_key
 from security.rate_limiter import RateLimiter
+from security.config import config
 
 # Global rate limiter instance
-rate_limiter = RateLimiter()
+rate_limiter = RateLimiter(
+    max_requests=config.RATE_LIMIT_MAX_REQUESTS,
+    window_seconds=config.RATE_LIMIT_WINDOW_SECONDS
+)
 
 
 # ============================================================
