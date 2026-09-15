@@ -1,0 +1,117 @@
+version: "3.9"
+
+services:
+  # ============================================================
+  # API Gateway — entry point tunggal untuk semua request
+  # Dikerjakan: Orang 1 (gateway/)
+  # ============================================================
+  gateway:
+    build: ./gateway
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/gateway_db
+      DISCOVERY_URL: http://discovery-lb:8010
+      JWT_SECRET: changeme-please-update-in-production
+    depends_on:
+      - db
+      - discovery-lb
+      - service-a
+      - service-b
+      - service-c
+    networks:
+      - app-network
+
+  # ============================================================
+  # Service Discovery & Load Balancer
+  # Dikerjakan: Orang 2 (discovery-lb/)
+  # ============================================================
+  discovery-lb:
+    build: ./discovery-lb
+    ports:
+      - "8010:8010"
+    networks:
+      - app-network
+
+  # ============================================================
+  # Health Check & Circuit Breaker (background worker)
+  # Dikerjakan: Orang 3 (resilience/)
+  # ============================================================
+  resilience:
+    build: ./resilience
+    environment:
+      DISCOVERY_URL: http://discovery-lb:8010
+    depends_on:
+      - discovery-lb
+    networks:
+      - app-network
+
+  # ============================================================
+  # Auth, Authorization, Rate Limiter
+  # Dikerjakan: Orang 4 (security/)
+  # ============================================================
+  security:
+    build: ./security
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/gateway_db
+      JWT_SECRET: changeme-please-update-in-production
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  # ============================================================
+  # Dummy Services A / B / C
+  # Dikerjakan: semua orang (untuk testing lokal)
+  # ============================================================
+  service-a:
+    build: ./services/service_a
+    ports:
+      - "8001:8001"
+    environment:
+      DISCOVERY_URL: http://discovery-lb:8010
+    networks:
+      - app-network
+
+  service-b:
+    build: ./services/service_b
+    ports:
+      - "8002:8002"
+    environment:
+      DISCOVERY_URL: http://discovery-lb:8010
+    networks:
+      - app-network
+
+  service-c:
+    build: ./services/service_c
+    ports:
+      - "8003:8003"
+    environment:
+      DISCOVERY_URL: http://discovery-lb:8010
+    networks:
+      - app-network
+
+  # ============================================================
+  # Database PostgreSQL
+  # DDL: jalankan shared/migrations/init_db.sql
+  # ============================================================
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: gateway_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./shared/migrations/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  pgdata:
