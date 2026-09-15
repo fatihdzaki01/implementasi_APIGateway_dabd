@@ -6,7 +6,9 @@ services:
   # Dikerjakan: Orang 1 (gateway/)
   # ============================================================
   gateway:
-    build: ./gateway
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
     ports:
       - "8000:8000"
     environment:
