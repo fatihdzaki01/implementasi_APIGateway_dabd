@@ -63,9 +63,21 @@ async def log_request(log: RequestLog, db=None) -> None:
     logger.info("request", extra=log.model_dump())
 
     if db is not None:
-        # TODO (Orang 5): simpan ke DB
-        # from shared.models import RequestLog as RequestLogModel
-        # db_log = RequestLogModel(**log.model_dump())
-        # db.add(db_log)
-        # db.commit()
-        pass
+        try:
+            from shared.models import RequestLog as RequestLogModel
+            db_log = RequestLogModel(
+                request_id=log.request_id,
+                timestamp=log.timestamp,
+                method=log.method,
+                path=log.path,
+                target_service=log.target_service,
+                status_code=log.status_code,
+                response_time_ms=log.response_time_ms,
+                user_id=log.user_id,
+                ip_address=log.ip_address,
+            )
+            db.add(db_log)
+            db.commit()
+        except Exception as e:
+            logger.error(f"Gagal simpan request log ke DB: {e}")
+            db.rollback()
