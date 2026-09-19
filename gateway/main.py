@@ -98,19 +98,19 @@ def _register_all_middlewares():
 
     # 2. Auth middleware (Orang 4 — security)
     try:
-        from security.auth import auth_middleware
+        from security.middleware import auth_middleware
         register_middleware(auth_middleware)
         print("[gateway] ✓ auth_middleware registered")
-    except (ImportError, AttributeError):
-        print("[gateway] - auth_middleware not available (Orang 4 belum selesai)")
+    except (ImportError, AttributeError) as e:
+        print(f"[gateway] - auth_middleware not available: {e}")
 
     # 3. Rate limiter middleware (Orang 4 — security)
     try:
-        from security.rate_limiter import rate_limit_middleware
+        from security.middleware import rate_limit_middleware
         register_middleware(rate_limit_middleware)
         print("[gateway] ✓ rate_limit_middleware registered")
-    except (ImportError, AttributeError):
-        print("[gateway] - rate_limit_middleware not available (Orang 4 belum selesai)")
+    except (ImportError, AttributeError) as e:
+        print(f"[gateway] - rate_limit_middleware not available: {e}")
 
     # 4. Validation middleware (Orang 5 — shared)
     try:
@@ -135,6 +135,17 @@ async def gateway_health():
     Gateway selalu return healthy (ini cuma nge-check gateway hidup/tidak).
     """
     return {"status": "healthy", "service": "api-gateway"}
+
+
+# ============================================================
+# Auth routes — include langsung dari security module
+# ============================================================
+try:
+    from security.router import router as auth_router
+    app.include_router(auth_router)
+    print("[gateway] ✓ Auth router included (/auth/*)")
+except Exception as e:
+    print(f"[gateway] - Auth router not available: {e}")
 
 
 @app.api_route(

@@ -9,10 +9,13 @@ RUN pip install --no-cache-dir -r gateway/requirements.txt
 # Copy shared module (needed for schemas, validation, logging, etc.)
 COPY shared/ ./shared/
 
+# Copy security module (needed for auth_middleware, rate_limit_middleware)
+COPY security/ ./security/
+
 # Copy gateway code
 COPY gateway/ ./gateway/
 
-# Set PYTHONPATH so imports work: from gateway.xxx import ..., from shared.xxx import ...
+# Set PYTHONPATH so imports work
 ENV PYTHONPATH=/app
 
 EXPOSE 8000
