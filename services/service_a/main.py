@@ -29,21 +29,31 @@ items = [
 @app.on_event("startup")
 async def register_to_discovery():
     """Register diri ke service discovery saat startup + kirim heartbeat periodic."""
-    try:
-        async with httpx.AsyncClient() as client:
-            await client.post(
-                f"{DISCOVERY_URL}/register",
-                json={
-                    "service_name": SERVICE_NAME,
-                    "host": HOST,
-                    "port": PORT,
-                    "weight": 1,
-                },
-                timeout=5.0,
-            )
-            print(f"[{SERVICE_NAME}] Berhasil register ke discovery")
-    except Exception as e:
-        print(f"[{SERVICE_NAME}] Gagal register ke discovery: {e}")
+    async def _register_with_retry():
+        for attempt in range(1, 20):
+            try:
+                async with httpx.AsyncClient() as client:
+                    r = await client.post(
+                        f"{DISCOVERY_URL}/register",
+                        json={
+                            "service_name": SERVICE_NAME,
+                            "host": HOST,
+                            "port": PORT,
+                            "weight": 1,
+                        },
+                        timeout=5.0,
+                    )
+                    if r.status_code < 300:
+                        print(f"[{SERVICE_NAME}] Berhasil register ke discovery")
+                        return True
+            except Exception as e:
+                pass
+            print(f"[{SERVICE_NAME}] Retry register ({attempt}/10)...")
+            await asyncio.sleep(3)
+        print(f"[{SERVICE_NAME}] Gagal register setelah 10 percobaan")
+        return False
+
+    registered = await _register_with_retry()
 
     # Background heartbeat
     async def _heartbeat_loop():
