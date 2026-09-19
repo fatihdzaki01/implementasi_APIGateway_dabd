@@ -7,8 +7,12 @@ Dikelola: Orang 5 (shared).
 import logging
 import json
 import sys
+import time
+import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Callable
+from fastapi import Request
+from fastapi.responses import Response, JSONResponse
 from shared.schemas import RequestLog
 
 
@@ -81,3 +85,39 @@ async def log_request(log: RequestLog, db=None) -> None:
         except Exception as e:
             logger.error(f"Gagal simpan request log ke DB: {e}")
             db.rollback()
+
+
+# ============================================================
+# Middleware: logging middleware untuk gateway pipeline
+# Signature sesuai kontrak: async def middleware(request, call_next)
+# ============================================================
+
+async def logging_middleware(request: Request, call_next: Callable) -> Response:
+    """
+    Middleware logging — catat setiap request masuk ke gateway.
+    Assign request_id, hitung response time, log hasilnya.
+    """
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+    start_time = time.time()
+
+    response = await call_next(request)
+
+    elapsed_ms = round((time.time() - start_time) * 1000, 2)
+
+    log = RequestLog(
+        request_id=request_id,
+        timestamp=datetime.utcnow(),
+        method=request.method,
+        path=str(request.url.path),
+        target_service=None,
+        status_code=response.status_code,
+        response_time_ms=elapsed_ms,
+        user_id=getattr(getattr(request.state, "user", None), "id", None),
+        ip_address=request.client.host if request.client else "unknown",
+    )
+
+    logger = get_logger("gateway.access")
+    logger.info("request", extra=log.model_dump())
+
+    return response

@@ -7,9 +7,9 @@ manggil registry beneran punya Orang 2, selama bentuk datanya sama.
 # Data awal: daftar service yang mau dimonitor
 # Nanti ini yang bakal diisi otomatis oleh Orang 2 pas service registrasi sendiri
 registry = {
-    "service-a": {"host": "localhost", "port": 8001, "status": "unknown"},
-    "service-b": {"host": "localhost", "port": 8002, "status": "unknown"},
-    "service-c": {"host": "localhost", "port": 8003, "status": "unknown"},
+    "service-a": {"host": "service-a", "port": 8001, "status": "unknown"},
+    "service-b": {"host": "service-b", "port": 8002, "status": "unknown"},
+    "service-c": {"host": "service-c", "port": 8003, "status": "unknown"},
 }
 
 

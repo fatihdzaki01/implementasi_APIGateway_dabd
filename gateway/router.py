@@ -41,13 +41,13 @@ async def _get_healthy_instances(service_name: str) -> list[dict]:
     try:
         client = await _get_client()
         resp = await client.get(
-            f"{DISCOVERY_URL}/services/{service_name}/instances"
+            f"{DISCOVERY_URL}/services/{service_name}"
         )
         if resp.status_code == 200:
             data = resp.json()
             instances = data.get("instances", data) if isinstance(data, dict) else data
             if isinstance(instances, list):
-                return [i for i in instances if i.get("status") == "healthy"]
+                return [i for i in instances if i.get("status", "").lower() == "healthy"]
         return []
     except (httpx.RequestError, Exception):
         return []

@@ -30,7 +30,7 @@ class RequestLog(BaseModel):
     timestamp: datetime
     method: str                                                # GET | POST | PUT | DELETE | PATCH
     path: str                                                  # path asli dari client, e.g. /service-a/items
-    target_service: str                                        # nama service tujuan, e.g. "service-a"
+    target_service: Optional[str] = None                       # nama service tujuan, e.g. "service-a"
     status_code: int
     response_time_ms: float
     user_id: Optional[str] = None                             # None kalau request tidak terauthentikasi

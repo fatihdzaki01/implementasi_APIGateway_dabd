@@ -3,6 +3,7 @@ Dummy Service A — Items service
 Port: 8001
 """
 
+import asyncio
 from fastapi import FastAPI
 from datetime import datetime
 import httpx
@@ -15,6 +16,8 @@ HOST = os.getenv("SERVICE_HOST", "service-a")
 PORT = int(os.getenv("SERVICE_PORT", "8001"))
 DISCOVERY_URL = os.getenv("DISCOVERY_URL", "http://discovery-lb:8010")
 
+INSTANCE_ID = f"{SERVICE_NAME}_{HOST}_{PORT}"
+
 # In-memory dummy data
 items = [
     {"id": 1, "name": "Laptop", "price": 12000000},
@@ -25,7 +28,7 @@ items = [
 
 @app.on_event("startup")
 async def register_to_discovery():
-    """Register diri ke service discovery saat startup."""
+    """Register diri ke service discovery saat startup + kirim heartbeat periodic."""
     try:
         async with httpx.AsyncClient() as client:
             await client.post(
@@ -41,6 +44,22 @@ async def register_to_discovery():
             print(f"[{SERVICE_NAME}] Berhasil register ke discovery")
     except Exception as e:
         print(f"[{SERVICE_NAME}] Gagal register ke discovery: {e}")
+
+    # Background heartbeat
+    async def _heartbeat_loop():
+        while True:
+            try:
+                async with httpx.AsyncClient() as client:
+                    await client.post(
+                        f"{DISCOVERY_URL}/heartbeat",
+                        json={"service_name": SERVICE_NAME, "instance_id": INSTANCE_ID},
+                        timeout=5.0,
+                    )
+            except Exception:
+                pass
+            await asyncio.sleep(10)
+
+    asyncio.create_task(_heartbeat_loop())
 
 
 @app.get("/health")

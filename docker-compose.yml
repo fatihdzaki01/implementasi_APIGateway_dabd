@@ -53,7 +53,9 @@ services:
   # Dikerjakan: Orang 4 (security/)
   # ============================================================
   security:
-    build: ./security
+    build:
+      context: .
+      dockerfile: security/Dockerfile
     environment:
       DATABASE_URL: postgresql://user:password@db:5432/gateway_db
       JWT_SECRET: changeme-please-update-in-production
