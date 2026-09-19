@@ -105,6 +105,9 @@ async def logging_middleware(request: Request, call_next: Callable) -> Response:
 
     elapsed_ms = round((time.time() - start_time) * 1000, 2)
 
+    user_obj = getattr(request.state, "user", None)
+    user_id_val = str(user_obj.id) if user_obj is not None else None
+
     log = RequestLog(
         request_id=request_id,
         timestamp=datetime.utcnow(),
@@ -113,7 +116,7 @@ async def logging_middleware(request: Request, call_next: Callable) -> Response:
         target_service=None,
         status_code=response.status_code,
         response_time_ms=elapsed_ms,
-        user_id=str(getattr(getattr(request.state, "user", None), "id", None)),
+        user_id=user_id_val,
         ip_address=request.client.host if request.client else "unknown",
     )
 

@@ -14,12 +14,14 @@ services:
     environment:
       DATABASE_URL: postgresql://user:password@db:5432/gateway_db
       DISCOVERY_URL: http://discovery-lb:8010
+      RESILIENCE_URL: http://resilience:8020
       JWT_SECRET: changeme-please-update-in-production
       RATE_LIMIT_MAX_REQUESTS: "5"
       RATE_LIMIT_WINDOW_SECONDS: "60"
     depends_on:
       - db
       - discovery-lb
+      - resilience
       - service-a
       - service-b
       - service-c

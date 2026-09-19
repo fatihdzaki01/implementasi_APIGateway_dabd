@@ -33,37 +33,23 @@ async def _get_client() -> httpx.AsyncClient:
     return _client
 
 
-async def _get_healthy_instances(service_name: str) -> list[dict]:
+async def _select_instance(service_name: str) -> dict | None:
     """
-    Fetch instance healthy dari discovery service.
-    Return list of instance dicts, kosong jika discovery down / service tidak ada.
+    Pilih satu instance dari discovery-lb via load balancer (round-robin).
+    Memanggil GET /lb/next/{service_name} → Orang 2 yang handle pemilihan instance.
+
+    Return dict instance jika ada, None jika tidak ada instance healthy.
     """
     try:
         client = await _get_client()
-        resp = await client.get(
-            f"{DISCOVERY_URL}/services/{service_name}"
-        )
+        resp = await client.get(f"{DISCOVERY_URL}/lb/next/{service_name}")
         if resp.status_code == 200:
             data = resp.json()
-            instances = data.get("instances", data) if isinstance(data, dict) else data
-            if isinstance(instances, list):
-                return [i for i in instances if i.get("status", "").lower() == "healthy"]
-        return []
-    except (httpx.RequestError, Exception):
-        return []
-
-
-async def _select_instance(service_name: str) -> dict | None:
-    """
-    Pilih satu instance dari daftar healthy.
-    Sekarang: pick random dari healthy instances.
-    Nanti Orang 2 bisa ganti jadi round-robin via discovery load balancer.
-    """
-    import random
-    instances = await _get_healthy_instances(service_name)
-    if not instances:
+            # format: {"status": "success", "target": {instance_dict}}
+            return data.get("target")
         return None
-    return random.choice(instances)
+    except (httpx.RequestError, Exception):
+        return None
 
 
 def _build_backend_url(instance: dict, path: str) -> str:

@@ -2,20 +2,24 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies
+# Install gateway dependencies
 COPY gateway/requirements.txt ./gateway/requirements.txt
 RUN pip install --no-cache-dir -r gateway/requirements.txt
 
-# Copy shared module (needed for schemas, validation, logging, etc.)
+# Install security dependencies (gateway import security.middleware at runtime)
+COPY security/requirements.txt ./security/requirements.txt
+RUN pip install --no-cache-dir -r security/requirements.txt
+
+# Install shared dependencies
+COPY shared/requirements.txt ./shared/requirements.txt
+RUN pip install --no-cache-dir -r shared/requirements.txt
+
+# Copy source code (context is repo root)
 COPY shared/ ./shared/
-
-# Copy security module (needed for auth_middleware, rate_limit_middleware)
 COPY security/ ./security/
-
-# Copy gateway code
 COPY gateway/ ./gateway/
 
-# Set PYTHONPATH so imports work
+# PYTHONPATH ke /app agar `import shared`, `import security`, `import gateway` semua resolve
 ENV PYTHONPATH=/app
 
 EXPOSE 8000

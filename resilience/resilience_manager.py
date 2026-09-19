@@ -9,14 +9,19 @@ class CircuitBreaker:
 
     def __init__(self, fail_threshold=config.FAIL_THRESHOLD,
                  cooldown_seconds=config.COOLDOWN_SECONDS):
-        self.state = "closed"          # closed | open | half_open
+        self.state = "closed"          # "closed" | "open" | "half_open"
         self.failure_count = 0
         self.fail_threshold = fail_threshold
         self.cooldown_seconds = cooldown_seconds
         self.opened_at = None
 
-    def should_try(self):
-        """Cek apakah boleh kirim request sekarang."""
+    def should_try(self) -> bool:
+        """
+        Cek apakah boleh kirim request / health check sekarang.
+        - closed   : boleh
+        - half_open: boleh (satu percobaan)
+        - open     : cek cooldown; kalau sudah lewat pindah ke half_open
+        """
         if self.state == "open":
             elapsed = time.time() - self.opened_at
             if elapsed < self.cooldown_seconds:
@@ -24,13 +29,20 @@ class CircuitBreaker:
             else:
                 self.state = "half_open"
                 return True
-        return True  # closed atau half_open boleh nyoba
+        return True
 
     def on_success(self):
+        """Dipanggil saat health check berhasil."""
+        if self.state in ("half_open", "open"):
+            import logging
+            logging.getLogger("resilience.cb").info(
+                f"[CB] {self.state} → closed (recovery)"
+            )
         self.state = "closed"
         self.failure_count = 0
 
     def on_failure(self):
+        """Dipanggil saat health check gagal."""
         self.failure_count += 1
         if self.state == "half_open":
             self.state = "open"
@@ -38,6 +50,7 @@ class CircuitBreaker:
         elif self.failure_count >= self.fail_threshold:
             self.state = "open"
             self.opened_at = time.time()
+
 
 
 class ResilienceManager:
