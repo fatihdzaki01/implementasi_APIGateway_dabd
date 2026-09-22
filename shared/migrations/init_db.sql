@@ -14,10 +14,10 @@ CREATE TABLE IF NOT EXISTS roles (
 
 -- Seed roles default
 INSERT INTO roles (name, permissions) VALUES
-    ('admin',    '{"all": true}'),
-    ('user',     '{"GET /service-a/*": true, "GET /service-b/*": true, "GET /service-c/*": true}'),
-    ('readonly', '{"GET": true}')
-ON CONFLICT (name) DO NOTHING;
+    ('admin',    '{"* *": true, "all": true}'),
+    ('user',     '{"GET /service-a/*": true, "GET /service-b/*": true, "GET /service-c/*": true, "POST /service-a/*": true, "POST /service-b/*": true, "POST /service-c/*": true, "POST /service-a/items": true, "POST /service-b/products": true, "POST /service-c/users": true}'),
+    ('readonly', '{"GET *": true, "GET": true, "HEAD *": true}')
+ON CONFLICT (name) DO UPDATE SET permissions = EXCLUDED.permissions;
 
 -- Tabel: users
 CREATE TABLE IF NOT EXISTS users (

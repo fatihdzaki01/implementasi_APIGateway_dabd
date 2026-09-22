@@ -166,16 +166,99 @@ for SVC in service-a service-b service-c; do
 done
 
 # =============================================================
+# 7. REQUEST VALIDATION — Orang 5 (shared/validation.py)
+# =============================================================
+section "7. REQUEST VALIDATION — Content-Type Enforcement (Orang 5)"
+info "Middleware validasi: POST dengan Content-Type selain JSON → 415"
+echo ""
+
+info "Test 1: Content-Type: text/plain → harus 415 Unsupported Media Type"
+STATUS_415=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$GATEWAY/service-a/items" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: text/plain" \
+  -d "test data")
+if [ "$STATUS_415" = "415" ]; then
+  ok "text/plain → HTTP 415 ✅ (ditolak middleware validasi)"
+else
+  fail "text/plain → HTTP $STATUS_415 (expected 415)"
+fi
+
+echo ""
+info "Test 2: Content-Type: application/json → harus 200 OK"
+RESP_200=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "$GATEWAY/service-a/items" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Monitor","price":1000000}')
+STATUS_200=$(echo "$RESP_200" | grep "HTTP_STATUS" | cut -d: -f2)
+BODY_200=$(echo "$RESP_200" | sed '/HTTP_STATUS/d')
+if [ "$STATUS_200" = "200" ]; then
+  ok "application/json → HTTP 200 ✅ (diterima, item berhasil dibuat)"
+  pretty "$BODY_200"
+else
+  fail "application/json → HTTP $STATUS_200"
+  echo "$BODY_200"
+fi
+
+# =============================================================
+# 8. STRUCTURED LOGGING — Orang 5 (shared/logging_config.py)
+# =============================================================
+section "8. STRUCTURED LOGGING — JSON Logs dari Gateway (Orang 5)"
+info "Gateway mencatat setiap request dalam format JSON terstruktur"
+info "Tampilkan 10 log terakhir dari container gateway:"
+echo ""
+
+docker compose logs gateway --tail 10 2>/dev/null
+
+ok "Log JSON terstruktur — siap diingest ke Elasticsearch/Loki/monitoring tool"
+
+# =============================================================
+# 9. DUMMY SERVICES A / B / C — Orang 5 (services/)
+# =============================================================
+section "9. DUMMY SERVICES — Service A / B / C via Gateway (Orang 5)"
+info "Semua request lewat Gateway (port 8000), bukan langsung ke service"
+echo ""
+
+info "Service A — Items (port 8001 via gateway):"
+RESP_A=$(curl -s "$GATEWAY/service-a/items" -H "Authorization: Bearer $TOKEN")
+pretty "$RESP_A"
+
+echo ""
+info "Service B — Products (port 8002 via gateway):"
+RESP_B=$(curl -s "$GATEWAY/service-b/products" -H "Authorization: Bearer $TOKEN")
+pretty "$RESP_B"
+
+echo ""
+info "Service C — Users (port 8003 via gateway):"
+RESP_C=$(curl -s "$GATEWAY/service-c/users" -H "Authorization: Bearer $TOKEN")
+pretty "$RESP_C"
+
+ok "Semua dummy service merespons via Gateway ✅"
+
+# =============================================================
 # SUMMARY
 # =============================================================
 section "SUMMARY — Semua Konsep Berhasil Didemonstrasikan"
 echo ""
+echo -e "  ${CYAN}--- Orang 1: API Gateway ---${NC}"
 echo -e "  ${GREEN}1. API Gateway      → Single entry point port 8000${NC}"
 echo -e "  ${GREEN}2. Reverse Proxy    → Gateway forward ke backend service${NC}"
+echo ""
+echo -e "  ${CYAN}--- Orang 2: Service Discovery & Load Balancing ---${NC}"
 echo -e "  ${GREEN}3. Service Discovery→ Registry otomatis di port 8010${NC}"
 echo -e "  ${GREEN}4. Load Balancing   → Round-robin pilih instance${NC}"
+echo ""
+echo -e "  ${CYAN}--- Orang 3: Resilience ---${NC}"
 echo -e "  ${GREEN}5. Health Check     → Monitor status tiap service${NC}"
 echo -e "  ${GREEN}6. Circuit Breaker  → Proteksi jika service down${NC}"
 echo ""
+echo -e "  ${CYAN}--- Orang 4: Security ---${NC}"
+echo -e "  ${GREEN}   Auth/Login       → JWT token via POST /auth/login${NC}"
+echo ""
+echo -e "  ${CYAN}--- Orang 5: Shared / Dummy Services ---${NC}"
+echo -e "  ${GREEN}7. Request Validation→ 415 jika bukan application/json${NC}"
+echo -e "  ${GREEN}8. Structured Logging→ JSON log tiap request di gateway${NC}"
+echo -e "  ${GREEN}9. Dummy Services   → Service A (items), B (products), C (users)${NC}"
+echo ""
 echo -e "${BOLD}  Sistem dibangun dengan FastAPI + Docker Compose${NC}"
 echo ""
+

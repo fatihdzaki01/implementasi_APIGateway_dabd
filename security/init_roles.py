@@ -63,7 +63,9 @@ def create_default_roles():
             existing_role = db.query(Role).filter(Role.name == role_data["name"]).first()
             
             if existing_role:
-                print(f"✓ Role '{role_data['name']}' already exists")
+                existing_role.permissions = role_data["permissions"]
+                db.add(existing_role)
+                print(f"✓ Updated permissions for role '{role_data['name']}'")
                 existing_count += 1
             else:
                 # Create new role

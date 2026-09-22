@@ -18,7 +18,7 @@ class SecurityConfig:
     """
     
     # JWT Configuration
-    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "dev-secret-key-CHANGE-IN-PRODUCTION")
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY") or os.getenv("JWT_SECRET") or "dev-secret-key-CHANGE-IN-PRODUCTION"
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     JWT_EXPIRATION_MINUTES: int = int(os.getenv("JWT_EXPIRATION_MINUTES", "30"))
     

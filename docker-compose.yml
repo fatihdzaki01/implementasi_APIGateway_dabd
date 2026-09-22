@@ -15,7 +15,8 @@ services:
       DISCOVERY_URL: http://discovery-lb:8010
       RESILIENCE_URL: http://resilience:8020
       JWT_SECRET: changeme-please-update-in-production
-      RATE_LIMIT_MAX_REQUESTS: "5"
+      JWT_SECRET_KEY: changeme-please-update-in-production
+      RATE_LIMIT_MAX_REQUESTS: "100"
       RATE_LIMIT_WINDOW_SECONDS: "60"
     depends_on:
       - db
@@ -61,6 +62,7 @@ services:
     environment:
       DATABASE_URL: postgresql://user:password@db:5432/gateway_db
       JWT_SECRET: changeme-please-update-in-production
+      JWT_SECRET_KEY: changeme-please-update-in-production
     depends_on:
       - db
     networks:
