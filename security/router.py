@@ -10,6 +10,7 @@ Endpoints:
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 # Import dari shared (kontrak)
@@ -73,6 +74,10 @@ class ApiKeyRequest(BaseModel):
 # ============================================================
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+# Bearer scheme untuk Swagger UI — auto_error=False supaya tidak
+# menginterupsi logika auth yang sudah jalan via request.state
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -166,7 +171,8 @@ async def login(
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(
-    user: User = Depends(get_current_user)
+    user: User = Depends(get_current_user),
+    _: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ):
     """
     Get current authenticated user info.
@@ -186,6 +192,7 @@ async def get_me(
 async def create_api_key(
     request: ApiKeyRequest,
     user: User = Depends(get_current_user),
+    _: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db)
 ):
     """

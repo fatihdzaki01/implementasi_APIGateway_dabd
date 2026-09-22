@@ -11,6 +11,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 
 from gateway.config import ROUTING_TABLE
@@ -75,6 +76,36 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ============================================================
+# Custom OpenAPI — inject securitySchemes supaya tombol
+# Authorize 🔒 muncul di Swagger UI (/docs)
+# ============================================================
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    # Inject BearerAuth scheme → ini yang bikin tombol Authorize muncul
+    openapi_schema.setdefault("components", {})["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "JWT token dari POST /auth/login. Masukkan token-nya saja (tanpa kata 'Bearer').",
+        }
+    }
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 
 # ============================================================
@@ -158,9 +189,28 @@ async def catch_all(request: Request):
     Catch-all route — semua request yang tidak match route lain
     akan di-forward ke service backend lewat middleware pipeline.
 
+    Early 404 check dilakukan sebelum masuk pipeline supaya path yang
+    tidak terdaftar tidak melewati auth middleware (dan return 401).
+
     Pipeline flow:
-        request → logging → auth → rate_limit → validation → reverse_proxy → response
+        request → [route check] → logging → auth → rate_limit → validation → reverse_proxy → response
     """
+    import uuid
+    from gateway.config import get_route
+
+    # Early route check — return 404 sebelum masuk pipeline
+    route = get_route(request.url.path)
+    if route is None:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "success": False,
+                "error": f"Tidak ada route untuk path: {request.url.path}",
+                "request_id": str(uuid.uuid4()),
+                "data": None,
+            },
+        )
+
     async def forwarder(req: Request):
         return await reverse_proxy_handler(req)
 

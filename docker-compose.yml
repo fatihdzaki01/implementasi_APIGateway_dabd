@@ -3,7 +3,6 @@ version: "3.9"
 services:
   # ============================================================
   # API Gateway — entry point tunggal untuk semua request
-  # Dikerjakan: Orang 1 (gateway/)
   # ============================================================
   gateway:
     build:
@@ -30,7 +29,6 @@ services:
 
   # ============================================================
   # Service Discovery & Load Balancer
-  # Dikerjakan: Orang 2 (discovery-lb/)
   # ============================================================
   discovery-lb:
     build: ./discovery-lb
@@ -41,10 +39,11 @@ services:
 
   # ============================================================
   # Health Check & Circuit Breaker (background worker)
-  # Dikerjakan: Orang 3 (resilience/)
   # ============================================================
   resilience:
     build: ./resilience
+    ports:
+      - "8020:8020"
     environment:
       DISCOVERY_URL: http://discovery-lb:8010
     depends_on:
@@ -54,7 +53,6 @@ services:
 
   # ============================================================
   # Auth, Authorization, Rate Limiter
-  # Dikerjakan: Orang 4 (security/)
   # ============================================================
   security:
     build:
@@ -70,7 +68,6 @@ services:
 
   # ============================================================
   # Dummy Services A / B / C
-  # Dikerjakan: semua orang (untuk testing lokal)
   # ============================================================
   service-a:
     build: ./services/service_a
