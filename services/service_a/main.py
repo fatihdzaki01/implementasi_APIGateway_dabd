@@ -1,10 +1,6 @@
-"""
-Dummy Service A — Items service
-Port: 8001
-"""
-
 import asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from datetime import datetime
 import httpx
 import os
@@ -18,7 +14,6 @@ DISCOVERY_URL = os.getenv("DISCOVERY_URL", "http://discovery-lb:8010")
 
 INSTANCE_ID = f"{SERVICE_NAME}_{HOST}_{PORT}"
 
-# In-memory dummy data
 items = [
     {"id": 1, "name": "Laptop", "price": 12000000},
     {"id": 2, "name": "Mouse", "price": 150000},
@@ -26,9 +21,13 @@ items = [
 ]
 
 
+class ItemCreate(BaseModel):
+    name: str
+    price: float
+
+
 @app.on_event("startup")
 async def register_to_discovery():
-    """Register diri ke service discovery saat startup + kirim heartbeat periodic."""
     async def _register_with_retry():
         for attempt in range(1, 20):
             try:
@@ -46,16 +45,15 @@ async def register_to_discovery():
                     if r.status_code < 300:
                         print(f"[{SERVICE_NAME}] Berhasil register ke discovery")
                         return True
-            except Exception as e:
+            except Exception:
                 pass
             print(f"[{SERVICE_NAME}] Retry register ({attempt}/10)...")
             await asyncio.sleep(3)
         print(f"[{SERVICE_NAME}] Gagal register setelah 10 percobaan")
         return False
 
-    registered = await _register_with_retry()
+    await _register_with_retry()
 
-    # Background heartbeat
     async def _heartbeat_loop():
         while True:
             try:
@@ -87,12 +85,12 @@ async def get_item(item_id: int):
     for item in items:
         if item["id"] == item_id:
             return {"item": item}
-    return {"error": "Item not found"}
+    raise HTTPException(status_code=404, detail="Item not found")
 
 
 @app.post("/items")
-async def create_item(item: dict):
-    new_item = {"id": len(items) + 1, **item}
+async def create_item(item: ItemCreate):
+    new_item = {"id": len(items) + 1, "name": item.name, "price": item.price}
     items.append(new_item)
     return {"item": new_item, "message": "Item created"}
 

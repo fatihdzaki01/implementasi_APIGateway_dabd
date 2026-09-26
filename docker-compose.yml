@@ -1,9 +1,6 @@
 version: "3.9"
 
 services:
-  # ============================================================
-  # API Gateway — entry point tunggal untuk semua request
-  # ============================================================
   gateway:
     build:
       context: .
@@ -23,14 +20,12 @@ services:
       - discovery-lb
       - resilience
       - service-a
+      - service-a-2
       - service-b
       - service-c
     networks:
       - app-network
 
-  # ============================================================
-  # Service Discovery & Load Balancer
-  # ============================================================
   discovery-lb:
     build: ./discovery-lb
     ports:
@@ -38,9 +33,6 @@ services:
     networks:
       - app-network
 
-  # ============================================================
-  # Health Check & Circuit Breaker (background worker)
-  # ============================================================
   resilience:
     build: ./resilience
     ports:
@@ -52,9 +44,6 @@ services:
     networks:
       - app-network
 
-  # ============================================================
-  # Auth, Authorization, Rate Limiter
-  # ============================================================
   security:
     build:
       context: .
@@ -68,15 +57,25 @@ services:
     networks:
       - app-network
 
-  # ============================================================
-  # Dummy Services A / B / C
-  # ============================================================
   service-a:
     build: ./services/service_a
     ports:
       - "8001:8001"
     environment:
       DISCOVERY_URL: http://discovery-lb:8010
+      SERVICE_HOST: service-a
+      SERVICE_PORT: "8001"
+    networks:
+      - app-network
+
+  service-a-2:
+    build: ./services/service_a
+    ports:
+      - "8011:8001"
+    environment:
+      DISCOVERY_URL: http://discovery-lb:8010
+      SERVICE_HOST: service-a-2
+      SERVICE_PORT: "8001"
     networks:
       - app-network
 
@@ -98,10 +97,6 @@ services:
     networks:
       - app-network
 
-  # ============================================================
-  # Database PostgreSQL
-  # DDL: jalankan shared/migrations/init_db.sql
-  # ============================================================
   db:
     image: postgres:15-alpine
     environment:
